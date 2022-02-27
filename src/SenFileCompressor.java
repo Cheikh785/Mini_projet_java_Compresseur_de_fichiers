@@ -1,12 +1,16 @@
+/**
+ * @author Cheikh Oumar BA
+ * @version 1.0
+ * @date 2022-02-01
+ * @copyright Copyright (c) 2022
+ */
 import java.io.*;
-import java.nio.file.FileSystem;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
+import java.util.zip.*;
 
 public class SenFileCompressor {
     public static void help() {
@@ -20,9 +24,15 @@ public class SenFileCompressor {
         System.exit(0);
     }
 
-    public static void archivage(List<String> listeSrcFiles, String... params) {
+    /**
+     * Archive a file or a list of file in a .sfc file
+     * @param listeSrcFiles The list of files to archive
+     * @param params    The path to the directory where we must put the file archived and/or -f option to create the directory if it doesn't exist
+     * @exception IOException
+     */
+    public static void archivage(List<String> listeSrcFiles, String... params) throws IOException {
         try {
-            FileOutputStream outFile = new FileOutputStream("Archive.zip");
+            FileOutputStream outFile = null;
             File source = null;
             if (params.length >= 1) {
                 String path = params[0];
@@ -30,7 +40,7 @@ public class SenFileCompressor {
                 if (!source.isDirectory()) {
                     if (params.length == 2) {
                         if (source.mkdir()) {
-                            outFile = new FileOutputStream(source.getAbsolutePath() + FileSystems.getDefault().getSeparator() + "Archive.zip");
+                            outFile = new FileOutputStream(source.getAbsolutePath() + FileSystems.getDefault().getSeparator() + "Archive.sfc");
                         } else {
                             System.out.println("Erreur lors de la création du répertoire " + path);
                             System.exit(0);
@@ -42,10 +52,14 @@ public class SenFileCompressor {
                 } else {
                     outFile = new FileOutputStream(source.getAbsolutePath() + FileSystems.getDefault().getSeparator() + "Archive.zip");
                 }
+            } else {
+                outFile = new FileOutputStream("Archive.zip");
             }
             ZipOutputStream out = new ZipOutputStream(outFile);
+            int sizeFileAfter = 0;
             for (String srcFile : listeSrcFiles) {
                 File file = new File(srcFile);
+//                file = compress(file.toString());
                 FileInputStream in = new FileInputStream(file);
                 out.putNextEntry(new ZipEntry(file.getName()));
                 byte[] bytes = new byte[1024];
@@ -57,7 +71,6 @@ public class SenFileCompressor {
             }
             out.close();
             outFile.close();
-
         } catch (IOException e) {
             System.out.println("Erreur sur les fichiers renseignés !");
             e.printStackTrace();
@@ -66,7 +79,13 @@ public class SenFileCompressor {
         System.exit(0);
     }
 
-    public static void desarchivage(String file, String... params) {
+    /**
+     * Unarchive a .sfc file in a specific directory or in the curent directory
+     * @param file      The .sfc file to unarchive
+     * @param params    The path of the directory where we must put the unarchive files and/or -f option to create the directory if this last doesn't exist
+     * @exception       IOException
+     */
+    public static void desarchivage(String file, String... params) throws IOException {
         try {
             File destDirectory = new File("./");
             File source = null;
@@ -90,8 +109,8 @@ public class SenFileCompressor {
                     destDirectory = new File(source.getAbsolutePath());
                 }
             }
-//            File destDirectory = new File("unzip_directory");
             byte[] buffer = new byte[1024];
+//            file = String.valueOf(decompress(file));
             ZipInputStream in = new ZipInputStream(new FileInputStream(file));
             ZipEntry zipEntry = in.getNextEntry();
             while (zipEntry != null) {
@@ -111,11 +130,47 @@ public class SenFileCompressor {
             e.printStackTrace();
             System.exit(0);
         }
-
         System.exit(0);
     }
 
-    public static void main(String[] args) {
+    /**
+     * Compress a file
+     * @param file  The file to compress
+     */
+    public static File compress(String file) throws FileNotFoundException {
+        byte[] input = file.getBytes(StandardCharsets.UTF_8);
+        byte[] output = new byte[100];
+        Deflater compresser = new Deflater();
+        compresser.setInput(input);
+        compresser.finish();
+        int compressedDataLength = compresser.deflate(output);
+        compresser.end();
+        String outputString = new String(output, 0, compressedDataLength, StandardCharsets.UTF_8);
+        return new File(outputString);
+    }
+
+    /**
+     * Decompress a file
+     * @param file  The file to decompress
+     */
+    public static File decompress(String file) {
+        try {
+            byte[] input = file.getBytes(StandardCharsets.UTF_8);
+            byte[] output = new byte[100];
+            Inflater decompresser = new Inflater();
+            decompresser.setInput(output, 0, input.length);
+            byte[] result = new byte[100];
+            int resultLength = decompresser.inflate(result);
+            decompresser.end();
+            String outputString = new String(output, 0, resultLength, StandardCharsets.UTF_8);
+            return new File(outputString);
+        } catch (DataFormatException e) {
+            System.out.println("Data format not valid");
+        }
+        return null;
+    }
+
+    public static void main(String[] args) throws IOException {
         System.out.println("\n\n\t\t\t\tBienvenue dans notre compresseur de fichiers !\n\n");
         List<String> listSrcFiles = new ArrayList<String>();
         int k = 0;
@@ -144,7 +199,7 @@ public class SenFileCompressor {
                     if (args[args.length - 2].equals("-f")) {
                         if (args[args.length - 4].equals("-r")) {
                             if (args[0].equals("-c")) {
-                                System.out.println("OK - Archivage avec option -r, -f and -v");
+                                System.out.println("OK - Archivage with option -r, -f and -v");
                                 for (int i = 1; i <= args.length - 5; i++) {
                                     listSrcFiles.add(args[i]);
                                 }
